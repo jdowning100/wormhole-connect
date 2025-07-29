@@ -193,4 +193,12 @@ export const TESTNET_CHAINS: ChainsConfig = {
     icon: 'Fogo',
     symbol: 'FOGO',
   },
+  QuaiTestnet: {
+    displayName: 'Quai Testnet',
+    sdkName: 'QuaiTestnet',
+    explorerUrl: 'https://orchard.quaiscan.io/cyprus1',
+    explorerName: 'QuaiScan',
+    icon: 'QuaiTestnet',
+    symbol: 'QUAI',
+  },
 };

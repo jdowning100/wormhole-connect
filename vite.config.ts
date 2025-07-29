@@ -100,7 +100,6 @@ const optimizeDeps = {
   include: [
     '@emotion/react',
     '@mui/material/Tooltip',
-    '@mui/material/Unstable_Grid2',
   ],
 };
 

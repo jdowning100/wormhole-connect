@@ -57,8 +57,16 @@ export const getWallets = () => {
     {},
   );
 
+  // Add Pelagus wallet manually since it's not in the predefined enum
+  const pelagusWallet = new Eip6963Wallet({
+    name: 'Pelagus Wallet',
+    url: 'https://pelaguswallet.io',
+    icon: 'https://pelaguswallet.io/docs/img/PelagusLogoSquare.png',
+  });
+
   return {
     ...eip6963Wallets,
+    pelagus: pelagusWallet,
     okxwallet: new Eip6963Wallet({
       name: InjectedWallets.OKXWallet,
       url: 'https://www.okx.com/web3',

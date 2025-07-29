@@ -412,4 +412,19 @@ export const TESTNET_TOKENS: TokenConfig[] = [
     icon: TokenIcon.PLUME,
     tokenId: { chain: 'Plume', address: 'native' },
   },
+  {
+    symbol: 'QUAI',
+    decimals: 18,
+    icon: TokenIcon.QUAI,
+    tokenId: { chain: 'QuaiTestnet', address: 'native' },
+  },
+  {
+    symbol: 'WQUAI',
+    decimals: 18,
+    icon: TokenIcon.QUAI,
+    tokenId: {
+      chain: 'QuaiTestnet',
+      address: '0x005c46f661Baef20671943f2b4c087Df3E7CEb13',
+    },
+  },
 ];
