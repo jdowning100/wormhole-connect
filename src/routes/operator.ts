@@ -13,6 +13,7 @@ import {
 } from '@wormhole-foundation/sdk';
 
 import SDKv2Route from './sdkv2';
+import { nttRoutes } from 'exports/ntt';
 
 export interface TxInfo {
   route: string;
@@ -23,12 +24,43 @@ export type QuoteResult = routes.QuoteResult<routes.Options>;
 
 type forEachCallback<T> = (name: string, route: SDKv2Route) => T;
 
+// NTT configuration for WQUAI between Quai testnet and Sepolia
+const QUAI_NTT_CONFIG = {
+  tokens: {
+    WQUAI: [
+      {
+        chain: 'QuaiTestnet' as Chain,
+        manager: '0x0040f2d300877eC4C21121C0624f8ace780C0590',
+        token: '0x005c46f661Baef20671943f2b4c087Df3E7CEb13', // WQUAI
+        transceiver: [
+          {
+            address: '0x004422Fb05F1139af0d90bd414e1ce9185b33D3c',
+            type: 'wormhole' as const,
+          },
+        ],
+      },
+      {
+        chain: 'Sepolia' as Chain,
+        manager: '0x6f847cC817F5f3Fc9aeb2951259058d5C8801cfF',
+        token: '0xd5a7cda49e2fb7c147376a4ac18c189603fe30a7', // Bridged WQUAI
+        transceiver: [
+          {
+            address: '0x0bBe182ec6BCBc3981011ddbf73c070BF75D5AA0',
+            type: 'wormhole' as const,
+          },
+        ],
+      },
+    ],
+  },
+};
+
 export const DEFAULT_ROUTES = [
   routes.AutomaticCCTPRoute,
   routes.CCTPRoute,
   routes.AutomaticTokenBridgeRoute,
   routes.TokenBridgeRoute,
   routes.TBTCRoute,
+  ...nttRoutes(QUAI_NTT_CONFIG),
 ];
 
 export interface QuoteParams {

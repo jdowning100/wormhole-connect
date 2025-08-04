@@ -9,6 +9,8 @@ export const CONNECT_GIT_HASH =
   import.meta.env.REACT_APP_CONNECT_GIT_HASH || 'unknown';
 
 export const CHAIN_ORDER: Chain[] = [
+  'QuaiTestnet',
+  'Sepolia',
   'Ethereum',
   'Solana',
   'Arbitrum',
@@ -28,5 +30,4 @@ export const CHAIN_ORDER: Chain[] = [
   'Berachain',
   'Mezo',
   'Fogo',
-  'QuaiTestnet',
 ];

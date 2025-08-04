@@ -10,6 +10,8 @@ import {
   TransferState,
   TransactionId,
   Signer,
+  SignAndSendSigner,
+  isNative,
 } from '@wormhole-foundation/sdk';
 import { Token } from 'config/tokens';
 
@@ -80,8 +82,18 @@ export class SDKv2Route {
     }
 
     try {
+      // For NTT routes with native QUAI, check support using WQUAI
+      let effectiveSourceToken = sourceToken;
+      const isNttRoute = this.rc.meta.name.includes('Ntt') || this.rc.meta.name.includes('NTT');
+      const isQuaiNative = fromChain === 'QuaiTestnet' && isNative(sourceToken.tokenId.address);
+      
+      if (isNttRoute && isQuaiNative) {
+        const wquaiTokenId = Wormhole.tokenId('QuaiTestnet' as Chain, '0x005c46f661Baef20671943f2b4c087Df3E7CEb13');
+        effectiveSourceToken = config.tokens.get(wquaiTokenId) || sourceToken;
+      }
+
       const supportedDestinationTokens = await this.supportedDestTokens(
-        sourceToken,
+        effectiveSourceToken,
         fromChain,
         toChain,
       );
@@ -117,10 +129,21 @@ export class SDKv2Route {
 
     if (isIlliquid) return [];
 
-    const cacheKey = `supportedDestTokens-${sourceToken.address}-${fromChain}-${toChain}`;
+    // Check if we need to substitute native QUAI with WQUAI for NTT routes
+    let effectiveSourceToken = sourceToken;
+    const isNttRoute = this.rc.meta.name.includes('Ntt') || this.rc.meta.name.includes('NTT');
+    const isQuaiNative = fromChain === 'QuaiTestnet' && isNative(sourceToken.tokenId.address);
+    
+    if (isNttRoute && isQuaiNative) {
+      // Use WQUAI instead of native QUAI for NTT route checks
+      const wquaiTokenId = Wormhole.tokenId('QuaiTestnet' as Chain, '0x005c46f661Baef20671943f2b4c087Df3E7CEb13');
+      effectiveSourceToken = config.tokens.get(wquaiTokenId) || sourceToken;
+    }
+
+    const cacheKey = `supportedDestTokens-${effectiveSourceToken.address}-${fromChain}-${toChain}`;
     const destTokens = await this.tokenCache.requestWithCache(cacheKey, () =>
       this.rc.supportedDestinationTokens(
-        sourceToken.tokenId,
+        effectiveSourceToken.tokenId,
         fromContext.context,
         toContext.context,
       ),
@@ -214,9 +237,19 @@ export class SDKv2Route {
       throw new Error('Need both chains to get a quote from SDKv2');
     }
 
+    // For NTT routes with native QUAI, get quote using WQUAI
+    let effectiveSourceToken = sourceToken;
+    const isNttRoute = this.rc.meta.name.includes('Ntt') || this.rc.meta.name.includes('NTT');
+    const isQuaiNative = fromChain === 'QuaiTestnet' && isNative(sourceToken.tokenId.address);
+    
+    if (isNttRoute && isQuaiNative) {
+      const wquaiTokenId = Wormhole.tokenId('QuaiTestnet' as Chain, '0x005c46f661Baef20671943f2b4c087Df3E7CEb13');
+      effectiveSourceToken = config.tokens.get(wquaiTokenId) || sourceToken;
+    }
+
     const [, quote] = await this.getQuote(
       amountIn,
-      sourceToken,
+      effectiveSourceToken,
       destToken,
       fromChain,
       toChain,
@@ -241,9 +274,29 @@ export class SDKv2Route {
     destToken: Token,
     options?: routes.AutomaticTokenBridgeRoute.Options,
   ): Promise<[routes.Route<Network>, routes.Receipt]> {
+    // Check if we need to wrap native QUAI for NTT routes
+    const isNttRoute =
+      this.rc.meta.name.includes('Ntt') || this.rc.meta.name.includes('NTT');
+    const isQuaiNative =
+      fromChain === 'QuaiTestnet' && isNative(sourceToken.tokenId.address);
+
+    let actualSourceToken = sourceToken;
+
+    if (isNttRoute && isQuaiNative) {
+      // First wrap QUAI to WQUAI
+      await this.wrapQuaiToWquai(amount, fromChain, senderAddress);
+
+      // Update source token to WQUAI
+      const wquaiTokenId = Wormhole.tokenId(
+        'QuaiTestnet' as Chain,
+        '0x005c46f661Baef20671943f2b4c087Df3E7CEb13',
+      );
+      actualSourceToken = config.tokens.get(wquaiTokenId) || sourceToken;
+    }
+
     const [route, quote, req] = await this.getQuote(
       amount,
-      sourceToken,
+      actualSourceToken,
       destToken,
       fromChain,
       toChain,
@@ -319,6 +372,53 @@ export class SDKv2Route {
     } else {
       return null;
     }
+  }
+
+  private async wrapQuaiToWquai(
+    amount: Amount,
+    fromChain: Chain,
+    senderAddress: string,
+  ): Promise<void> {
+    if (fromChain !== 'QuaiTestnet') {
+      throw new Error('QUAI wrapping is only supported on QuaiTestnet');
+    }
+
+    const WQUAI_ADDRESS = '0x005c46f661Baef20671943f2b4c087Df3E7CEb13';
+
+    let signer: Signer;
+    if (config.ui.testOptions?.enableHeadlessSigner) {
+      signer = await SDKv2Signer.fromPrivateKey(fromChain);
+    } else {
+      signer = await SDKv2Signer.fromChain(
+        fromChain,
+        senderAddress,
+        {},
+        TransferWallet.SENDING,
+      );
+    }
+
+    // Create wrapping transaction
+    const amountWei = sdkAmount.units(amount);
+
+    const txHashes = await (
+      signer as SignAndSendSigner<Network, Chain>
+    ).signAndSend([
+      {
+        network: config.network,
+        chain: fromChain,
+        transaction: {
+          chainId: 15000,
+          to: WQUAI_ADDRESS,
+          data: '0xd0e30db0', // deposit() function selector
+          value: amountWei,
+          gasLimit: 500000n,
+        },
+        description: 'Wrap QUAI to WQUAI',
+        parallelizable: false,
+      },
+    ]);
+
+    console.log('QUAI wrapped to WQUAI:', txHashes);
   }
 
   // Prevent receiving illiquid wormhole-wrapped tokens

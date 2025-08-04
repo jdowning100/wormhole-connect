@@ -2,6 +2,21 @@ import { TokenIcon, TokenConfig } from '../types';
 
 export const TESTNET_TOKENS: TokenConfig[] = [
   {
+    symbol: 'QUAI',
+    icon: TokenIcon.ETH, // Using ETH icon as placeholder
+    decimals: 18,
+    tokenId: { chain: 'QuaiTestnet', address: 'native' },
+  },
+  {
+    symbol: 'WQUAI',
+    icon: TokenIcon.ETH, // Using ETH icon as placeholder
+    decimals: 18,
+    tokenId: {
+      chain: 'QuaiTestnet',
+      address: '0x005c46f661Baef20671943f2b4c087Df3E7CEb13',
+    },
+  },
+  {
     symbol: 'BNB',
     icon: TokenIcon.BNB,
     decimals: 18,

@@ -41,16 +41,45 @@ const coalesceWormholeChainName = (name: string) =>
   }[name] || name);
 
 export const getWallets = () => {
-  const CHAINS_CONFIG = DEFAULT_CHAINS.map((wagmiConfig) => ({
-    ...wagmiConfig,
-    rpcUrls: {
-      ...wagmiConfig.rpcUrls,
-      default: getRpcForChain(
-        coalesceWormholeChainName(wagmiConfig.name),
-        wagmiConfig.rpcUrls.default,
-      ),
+  // Add QuaiTestnet configuration
+  const QUAI_TESTNET = {
+    id: 15000,
+    name: 'QuaiTestnet',
+    network: 'quai-testnet',
+    nativeCurrency: {
+      decimals: 18,
+      name: 'Quai',
+      symbol: 'QUAI',
     },
-  }));
+    rpcUrls: {
+      default: {
+        http: ['https://orchard.rpc.quai.network/cyprus1'] as const,
+      },
+      public: {
+        http: ['https://orchard.rpc.quai.network/cyprus1'] as const,
+      },
+    },
+    blockExplorers: {
+      default: {
+        name: 'QuaiScan',
+        url: 'https://orchard.quaiscan.io',
+      },
+    },
+    testnet: true,
+  } as const;
+
+  const CHAINS_CONFIG = ([...DEFAULT_CHAINS, QUAI_TESTNET] as any[]).map(
+    (wagmiConfig) => ({
+      ...wagmiConfig,
+      rpcUrls: {
+        ...wagmiConfig.rpcUrls,
+        default: getRpcForChain(
+          coalesceWormholeChainName(wagmiConfig.name),
+          wagmiConfig.rpcUrls.default,
+        ),
+      },
+    }),
+  );
 
   const eip6963Wallets = Object.entries(Eip6963Wallets).reduce(
     (acc, [key, name]) => ({ [key]: new Eip6963Wallet(name), ...acc }),
@@ -149,8 +178,9 @@ export async function signAndSendTransaction(
       }
     }
   }
-
+  request.transaction.gasLimit = 500000;
   const tx = await signer.sendTransaction(request.transaction);
+  console.log('tx.hash', tx.hash);
   const result = await tx.wait();
 
   if (result === null) throw new Error('Failed to wait for transaction');
